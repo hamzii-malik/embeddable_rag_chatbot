@@ -1,0 +1,7 @@
+.env
+venv/
+__pycache__/
+*.pyc
+scratch/
+tmp_status_output.txt
+.pytest_cache/

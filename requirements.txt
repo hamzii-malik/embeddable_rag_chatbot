@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pgvector
+beautifulsoup4
+requests
+playwright
+openai
+google-genai
+python-dotenv
+pydantic
+celery
+redis
+pypdf
+python-docx
+openpyxl

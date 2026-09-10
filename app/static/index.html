@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EMBEDD IQ — RAG Chatbot Builder</title>
+  <style>
+    :root {
+      --bg:      #080A0D;
+      --surface: #111418;
+      --border:  #1E2228;
+      --silver:  #C8CBD0;
+      --gold:    #D6A84F;
+      --gold-hi: #F0C76A;
+      --text:    #F5F5F3;
+      --muted:   #6B7380;
+      --error:   #FF6B6B;
+      --radius:  10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .logo { font-size: 20px; font-weight: 800; color: var(--gold); letter-spacing: .5px; }
+    .logo span { color: var(--silver); }
+    .nav-badge {
+      font-size: 11px; padding: 2px 8px;
+      background: #D6A84F18; color: var(--gold);
+      border: 1px solid #D6A84F44; border-radius: 999px;
+    }
+
+    /* ── MAIN — single centered column ── */
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px 60px;
+      overflow-y: auto;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card h3 {
+      font-size: 18px; font-weight: 700; color: var(--silver);
+      margin-bottom: 6px;
+    }
+    .card .desc {
+      font-size: 13px; color: var(--muted);
+      margin-bottom: 18px; line-height: 1.55;
+    }
+
+    /* ── INPUT ROW ── */
+    .input-row { display: flex; gap: 8px; }
+    .input-row input {
+      flex: 1; padding: 12px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text); font-size: 14px;
+      outline: none; transition: border-color .2s;
+    }
+    .input-row input:focus { border-color: var(--gold); }
+    .input-row input::placeholder { color: var(--muted); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 8px;
+      font-weight: 700; font-size: 13px; cursor: pointer;
+      transition: background .2s, transform .1s; white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-gold { background: var(--gold); color: var(--bg); }
+    .btn-gold:hover { background: var(--gold-hi); }
+    .btn-gold:disabled { background: #5a4420; color: #8b7040; cursor: not-allowed; transform: none; }
+    .btn-outline {
+      background: transparent; color: var(--silver);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ── STATUS CARD (hidden by default) ── */
+    #statusCard { display: none; }
+
+    .status-top {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 16px;
+    }
+    .section-label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted);
+    }
+    .status-badge {
+      font-size: 12px; font-weight: 700;
+      padding: 3px 11px; border-radius: 999px;
+    }
+    .badge-processing { background: #1a3a5c; color: #5ba8f5; }
+    .badge-completed  { background: #1a3d1a; color: #4CAF50; }
+    .badge-failed     { background: #3d1a1a; color: var(--error); }
+
+    .stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; margin-bottom: 14px;
+    }
+    .stat-box {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px;
+    }
+    .stat-box .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .stat-box .stat-val { font-size: 20px; font-weight: 700; color: var(--text); }
+
+    .progress-wrap {
+      background: var(--bg); border-radius: 999px;
+      height: 6px; overflow: hidden; margin-bottom: 6px;
+    }
+    .progress-bar {
+      height: 100%; background: var(--gold);
+      border-radius: 999px; transition: width .5s ease; width: 0%;
+    }
+    .stage-text { font-size: 12px; color: var(--muted); min-height: 18px; }
+
+    .color-row {
+      display: none; align-items: center; gap: 8px;
+      margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--muted);
+    }
+    .color-swatch {
+      width: 18px; height: 18px; border-radius: 4px;
+      border: 1px solid rgba(255,255,255,.12); flex-shrink: 0;
+    }
+    .color-hex { font-weight: 600; color: var(--text); }
+
+    .error-box {
+      display: none; margin-top: 12px;
+      background: #2d1010; border: 1px solid #5a2020;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 12px; color: var(--error); line-height: 1.5;
+    }
+
+    /* ── EMBED CARD (hidden by default) ── */
+    #embedCard { display: none; }
+
+    .embed-wrap { position: relative; margin-bottom: 14px; }
+    .embed-textarea {
+      width: 100%;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--gold-hi);
+      font-family: 'Courier New', monospace; font-size: 12px;
+      padding: 12px 44px 12px 12px;
+      resize: none; height: 72px; outline: none; line-height: 1.5;
+    }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--border); border: none; border-radius: 6px;
+      color: var(--silver); font-size: 11px; padding: 4px 8px;
+      cursor: pointer; transition: background .2s;
+    }
+    .copy-btn:hover { background: var(--gold); color: var(--bg); }
+
+    .action-row { display: flex; gap: 10px; }
+    .action-row .btn { flex: 1; text-align: center; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">EMBEDD<span> IQ</span></span>
+  <span class="nav-badge">RAG Chatbot Builder</span>
+</nav>
+
+<main>
+  <div class="panel">
+
+    <!-- ── SCAN CARD ── -->
+    <div class="card">
+      <h3>Generate AI Chatbot</h3>
+      <p class="desc">Enter your website URL. We'll scan every page, index the content, and build a fully branded chatbot widget.</p>
+      <div class="input-row">
+        <input type="url" id="websiteUrl" placeholder="https://yourwebsite.com" required />
+        <button class="btn btn-gold" id="scanBtn" onclick="startScan()">Generate</button>
+      </div>
+    </div>
+
+    <!-- ── STATUS CARD ── -->
+    <div class="card" id="statusCard">
+      <div class="status-top">
+        <span class="section-label">Progress</span>
+        <span class="status-badge badge-processing" id="statusBadge">⏳ Processing</span>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Pages Scanned</div>
+          <div class="stat-val" id="pageCount">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Chunks Indexed</div>
+          <div class="stat-val" id="chunkCount">0</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="stage-text" id="stageText">Starting…</div>
+
+      <div class="color-row" id="colorRow">
+        <div class="color-swatch" id="colorSwatch"></div>
+        <span>Brand color</span>
+        <span class="color-hex" id="brandColor"></span>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+    </div>
+
+    <!-- ── EMBED + PREVIEW CARD ── -->
+    <div class="card" id="embedCard">
+      <div class="section-label" style="margin-bottom:10px;">Embed Code</div>
+      <p class="desc" style="margin-bottom:12px;">
+        Paste this before <code style="color:var(--gold-hi)">&lt;/body&gt;</code> on any page to embed your chatbot.
+      </p>
+      <div class="embed-wrap">
+        <textarea class="embed-textarea" id="embedCode" readonly></textarea>
+        <button class="copy-btn" id="copyBtn" onclick="copyEmbed()">Copy</button>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-gold" onclick="openPreview()">🔍 Open Live Preview</button>
+        <button class="btn btn-outline" onclick="startScan()">↺ Re-scan</button>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  let pollInterval   = null;
+  let currentId      = null;
+  let currentUrl     = null;
+
+  /* ── SCAN ──────────────────────────────────────────────────────────── */
+  async function startScan() {
+    const url = document.getElementById('websiteUrl').value.trim();
+    if (!url) { alert('Please enter a website URL'); return; }
+
+    stopPolling();
+    currentId  = null;
+    currentUrl = url;
+
+    // reset UI
+    show('statusCard');
+    hide('embedCard');
+    set('pageCount',  '0');
+    set('chunkCount', '0');
+    set('progressBar', null, { width: '0%' });
+    set('stageText', 'Submitting…');
+    set('statusBadge', '⏳ Processing');
+    el('statusBadge').className = 'status-badge badge-processing';
+    hide('colorRow');
+    hide('errorBox');
+
+    const btn = el('scanBtn');
+    btn.textContent = '⏳ Scanning…';
+    btn.disabled = true;
+
+    try {
+      const res  = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Scan failed');
+      currentId = data.website_id;
+      pollStatus(currentId);
+    } catch (err) {
+      markFailed(err.message);
+      resetBtn();
+    }
+  }
+
+  /* ── POLL ──────────────────────────────────────────────────────────── */
+  function pollStatus(id) {
+    stopPolling();
+    const tick = async () => {
+      try {
+        const res  = await fetch(`/api/status/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        applyStatus(data);
+      } catch (_) {}
+    };
+    pollInterval = setInterval(tick, 1500);
+    tick();
+  }
+
+  function stopPolling() {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  }
+
+  function applyStatus(data) {
+    set('pageCount',  String(data.pages_scanned || data.total_pages_scanned || 0));
+    set('chunkCount', String(data.chunks_indexed || 0));
+    set('stageText',  data.stage || data.status);
+
+    // progress bar
+    const stage = (data.stage || '').toLowerCase();
+    let pct = 5;
+    if (stage.includes('scan'))   pct = 35;
+    if (stage.includes('index'))  pct = 68;
+    if (stage.includes('final'))  pct = 88;
+    if (data.status === 'COMPLETED') pct = 100;
+    el('progressBar').style.width = pct + '%';
+
+    if (data.status === 'COMPLETED') {
+      stopPolling();
+      el('statusBadge').className = 'status-badge badge-completed';
+      set('statusBadge', '✓ Completed');
+      resetBtn();
+
+      if (data.primary_color) {
+        el('colorSwatch').style.background = data.primary_color;
+        set('brandColor', data.primary_color);
+        show('colorRow');
+      }
+
+      if (data.embed_code) {
+        el('embedCode').value = data.embed_code;
+        show('embedCard');
+      }
+
+    } else if (data.status === 'FAILED') {
+      stopPolling();
+      markFailed(data.error || 'Processing failed. Check server logs.');
+      resetBtn();
+    }
+  }
+
+  /* ── PREVIEW — opens in new tab ────────────────────────────────────── */
+  function openPreview() {
+    if (!currentId) return;
+    window.open(`/preview/${currentId}`, '_blank');
+  }
+
+  /* ── COPY EMBED ─────────────────────────────────────────────────────── */
+  function copyEmbed() {
+    const val = el('embedCode').value;
+    navigator.clipboard.writeText(val).then(() => {
+      const btn = el('copyBtn');
+      btn.textContent = '✓ Copied!';
+      btn.style.cssText = 'background:var(--gold);color:var(--bg)';
+      setTimeout(() => { btn.textContent = 'Copy'; btn.style.cssText = ''; }, 2000);
+    }).catch(() => {
+      el('embedCode').select();
+      document.execCommand('copy');
+    });
+  }
+
+  /* ── HELPERS ────────────────────────────────────────────────────────── */
+  function el(id) { return document.getElementById(id); }
+  function show(id) { el(id).style.display = 'block'; }
+  function hide(id) { el(id).style.display = 'none'; }
+  function set(id, text, styles) {
+    if (text !== null && text !== undefined) el(id).textContent = text;
+    if (styles) Object.assign(el(id).style, styles);
+  }
+  function markFailed(msg) {
+    el('statusBadge').className = 'status-badge badge-failed';
+    set('statusBadge', '✗ Failed');
+    el('errorBox').textContent = msg;
+    show('errorBox');
+    el('progressBar').style.background = 'var(--error)';
+  }
+  function resetBtn() {
+    const btn = el('scanBtn');
+    btn.textContent = 'Generate';
+    btn.disabled = false;
+  }
+</script>
+</body>
+</html>
